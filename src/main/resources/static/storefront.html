@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>E-Commerce Demo Storefront</title>
+<style>
+  :root { --primary: #1f3b73; --bg: #f7f8fa; --card: #ffffff; --border: #e2e5ea; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", Arial, sans-serif; margin: 0; background: var(--bg); color: #1a1a1a; }
+  header { background: var(--primary); color: white; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; }
+  header h1 { font-size: 18px; margin: 0; }
+  #authArea { font-size: 14px; }
+  #authArea button { margin-left: 8px; }
+  main { max-width: 1000px; margin: 0 auto; padding: 20px; }
+  section { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin-bottom: 18px; }
+  h2 { font-size: 15px; color: var(--primary); margin-top: 0; }
+  input { padding: 7px 9px; border: 1px solid var(--border); border-radius: 5px; margin-right: 6px; margin-bottom: 6px; }
+  button { padding: 7px 14px; background: var(--primary); color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 13px; }
+  button:hover { opacity: 0.9; }
+  button.secondary { background: #6b7280; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .product-card { border: 1px solid var(--border); border-radius: 6px; padding: 12px; }
+  .product-card h3 { font-size: 14px; margin: 0 0 4px 0; }
+  .product-card .price { color: var(--primary); font-weight: bold; }
+  .product-card .stock { font-size: 12px; color: #666; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  .msg { font-size: 13px; padding: 8px 10px; border-radius: 5px; margin-top: 8px; }
+  .msg.ok { background: #e6f7ea; color: #1a7a1a; }
+  .msg.err { background: #fdeaea; color: #b33; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🛒 E-Commerce Demo Storefront</h1>
+  <div id="authArea"></div>
+</header>
+
+<main>
+
+  <!-- Auth -->
+  <section id="authSection">
+    <h2>Register / Login</h2>
+    <div>
+      <input id="regName" placeholder="Name">
+      <input id="regEmail" placeholder="Email">
+      <input id="regPassword" type="password" placeholder="Password (6+ chars)">
+      <button onclick="register()">Register</button>
+    </div>
+    <div style="margin-top:8px;">
+      <input id="loginEmail" placeholder="Email">
+      <input id="loginPassword" type="password" placeholder="Password">
+      <button onclick="login()">Login</button>
+    </div>
+    <div id="authMsg"></div>
+  </section>
+
+  <!-- Products -->
+  <section>
+    <h2>Products</h2>
+    <button class="secondary" onclick="loadProducts()">Refresh</button>
+    <div id="products" class="grid" style="margin-top:12px;"></div>
+  </section>
+
+  <!-- Cart -->
+  <section id="cartSection" class="hidden">
+    <h2>Your Cart</h2>
+    <table id="cartTable">
+      <thead><tr><th>Product</th><th>Qty</th><th>Subtotal</th></tr></thead>
+      <tbody id="cartBody"></tbody>
+    </table>
+    <p><b>Total: ₹<span id="cartTotal">0</span></b></p>
+    <button onclick="placeOrder()">Place Order</button>
+    <div id="cartMsg"></div>
+  </section>
+
+</main>
+
+<script>
+// All requests go to the same origin this page is served from (Spring Boot serves
+// this file as a static resource) — so no CORS configuration is needed on the backend.
+const API = '';
+
+let state = { token: null, refreshToken: null, userId: null, userName: null };
+
+function showMsg(elId, text, ok) {
+  const el = document.getElementById(elId);
+  el.innerHTML = `<div class="msg ${ok ? 'ok' : 'err'}">${text}</div>`;
+}
+
+function renderAuthArea() {
+  const el = document.getElementById('authArea');
+  if (state.token) {
+    el.innerHTML = `Logged in as <b>${state.userName}</b> <button class="secondary" onclick="logout()">Logout</button>`;
+    document.getElementById('authSection').classList.add('hidden');
+    document.getElementById('cartSection').classList.remove('hidden');
+    loadCart();
+  } else {
+    el.innerHTML = 'Not logged in';
+    document.getElementById('authSection').classList.remove('hidden');
+    document.getElementById('cartSection').classList.add('hidden');
+  }
+}
+
+async function register() {
+  const body = {
+    name: document.getElementById('regName').value,
+    email: document.getElementById('regEmail').value,
+    password: document.getElementById('regPassword').value,
+  };
+  const res = await fetch(`${API}/api/auth/register`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  showMsg('authMsg', res.ok ? `Registered ${data.email} — now log in.` : (data.message || 'Registration failed'), res.ok);
+}
+
+async function login() {
+  const body = {
+    email: document.getElementById('loginEmail').value,
+    password: document.getElementById('loginPassword').value,
+  };
+  const res = await fetch(`${API}/api/auth/login`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if (res.ok) {
+    state.token = data.token;
+    state.refreshToken = data.refreshToken;
+    state.userId = data.user.id;
+    state.userName = data.user.name;
+    renderAuthArea();
+  } else {
+    showMsg('authMsg', data.message || 'Login failed', false);
+  }
+}
+
+async function logout() {
+  await fetch(`${API}/api/auth/logout`, {
+    method: 'POST', headers: { Authorization: `Bearer ${state.token}` }
+  });
+  state = { token: null, refreshToken: null, userId: null, userName: null };
+  renderAuthArea();
+}
+
+async function loadProducts() {
+  const res = await fetch(`${API}/api/products`);
+  const products = await res.json();
+  const el = document.getElementById('products');
+  el.innerHTML = products.map(p => `
+    <div class="product-card">
+      <h3>${p.name}</h3>
+      <div class="price">₹${p.price}</div>
+      <div class="stock">Stock: ${p.stock}</div>
+      <button style="margin-top:8px;" onclick="addToCart(${p.id})" ${state.token ? '' : 'disabled title="Log in first"'}>
+        Add to cart
+      </button>
+    </div>
+  `).join('');
+}
+
+async function addToCart(productId) {
+  if (!state.token) return;
+  const res = await fetch(`${API}/api/cart/${state.userId}/add?productId=${productId}&quantity=1`, {
+    method: 'POST', headers: { Authorization: `Bearer ${state.token}` }
+  });
+  if (res.ok) { loadCart(); } else { alert('Could not add to cart'); }
+}
+
+async function loadCart() {
+  if (!state.token) return;
+  const res = await fetch(`${API}/api/cart/${state.userId}`, {
+    headers: { Authorization: `Bearer ${state.token}` }
+  });
+  const cart = await res.json();
+  document.getElementById('cartBody').innerHTML = (cart.items || []).map(i => `
+    <tr><td>${i.productName}</td><td>${i.quantity}</td><td>₹${i.subtotal}</td></tr>
+  `).join('');
+  document.getElementById('cartTotal').textContent = cart.totalAmount || 0;
+}
+
+async function placeOrder() {
+  const address = prompt('Shipping address:', 'Hyderabad');
+  if (!address) return;
+  const res = await fetch(`${API}/api/orders/${state.userId}/place?shippingAddress=${encodeURIComponent(address)}`, {
+    method: 'POST', headers: { Authorization: `Bearer ${state.token}` }
+  });
+  const data = await res.json();
+  if (res.ok) {
+    showMsg('cartMsg', `Order #${data.id} placed — total ₹${data.totalAmount}. Check your email!`, true);
+    loadCart();
+    loadProducts();
+  } else {
+    showMsg('cartMsg', data.message || 'Order failed', false);
+  }
+}
+
+// Initial load
+renderAuthArea();
+loadProducts();
+</script>
+
+</body>
+</html>
