@@ -139,4 +139,4 @@ Covers `UserService`, `CartService`, `OrderService`, and `PaymentService`.
 | CI/CD (GitHub Actions) | ✅ Done |
 | Dockerization (app + MySQL + Redis) | ✅ Done |
 | README + .env.example + .gitignore | ✅ Done |
-| Push to GitHub | ⏳ Final step |
+| Push to GitHub | ✅ Done |
