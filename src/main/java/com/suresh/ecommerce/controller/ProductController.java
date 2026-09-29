@@ -18,9 +18,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/products")
 @RequiredArgsConstructor
-@Tag(name = "Products", description = "Product catalog — browsing and management")
-@SecurityRequirements // matches SecurityConfig: /api/products/** is permitAll
-public class ProductController {
+@Tag(name = "Products", description = "Product catalog — browsing is public, management requires ADMIN")public class ProductController {
 
     private final ProductService productService;
 
@@ -30,11 +28,13 @@ public class ProductController {
         return new ResponseEntity<>(created, HttpStatus.CREATED);
     }
 
+    @SecurityRequirements
     @GetMapping
     public ResponseEntity<List<ProductDTO>> getAllProducts() {
         return ResponseEntity.ok(productService.getAllProducts());
     }
 
+    @SecurityRequirements
     @GetMapping("/paged")
     @Operation(summary = "List products with pagination and sorting",
             description = "Example: /api/products/paged?page=0&size=10&sort=price,asc")
@@ -42,6 +42,7 @@ public class ProductController {
         return ResponseEntity.ok(productService.getAllProductsPaged(pageable));
     }
 
+    @SecurityRequirements
     @GetMapping("/{id}")
     public ResponseEntity<ProductDTO> getProductById(@PathVariable Long id) {
         return ResponseEntity.ok(productService.getProductById(id));
