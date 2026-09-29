@@ -48,11 +48,13 @@ import java.util.List;
         return ResponseEntity.ok(productService.getProductById(id));
     }
 
+    @SecurityRequirements
     @GetMapping("/category/{categoryId}")
     public ResponseEntity<List<ProductDTO>> getProductsByCategory(@PathVariable Long categoryId) {
         return ResponseEntity.ok(productService.getProductsByCategory(categoryId));
     }
 
+    @SecurityRequirements
     @GetMapping("/search")
     public ResponseEntity<List<ProductDTO>> searchProducts(@RequestParam String keyword) {
         return ResponseEntity.ok(productService.searchProducts(keyword));
