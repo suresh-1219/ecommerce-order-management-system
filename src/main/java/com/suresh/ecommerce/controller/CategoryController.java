@@ -15,8 +15,8 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/categories")
 @RequiredArgsConstructor
-@Tag(name = "Categories", description = "Product categories — browsing and management")
-@SecurityRequirements // matches SecurityConfig: /api/categories/** is permitAll
+@Tag(name = "Categories", description = "Product categories — browsing is public, management requires ADMIN")
+
 public class CategoryController {
 
     private final CategoryService categoryService;
@@ -27,11 +27,13 @@ public class CategoryController {
         return new ResponseEntity<>(created, HttpStatus.CREATED);
     }
 
+    @SecurityRequirements
     @GetMapping
     public ResponseEntity<List<CategoryDTO>> getAllCategories() {
         return ResponseEntity.ok(categoryService.getAllCategories());
     }
 
+    @SecurityRequirements
     @GetMapping("/{id}")
     public ResponseEntity<CategoryDTO> getCategoryById(@PathVariable Long id) {
         return ResponseEntity.ok(categoryService.getCategoryById(id));
