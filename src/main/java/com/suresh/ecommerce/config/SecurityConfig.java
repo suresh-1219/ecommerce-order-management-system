@@ -1,10 +1,8 @@
 package com.suresh.ecommerce.config;
 
-import com.suresh.ecommerce.security.JwtAuthenticationFilter;
-import com.suresh.ecommerce.security.RateLimitingFilter;
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -16,6 +14,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+import com.suresh.ecommerce.security.JwtAuthenticationFilter;
+import com.suresh.ecommerce.security.RateLimitingFilter;
+
+import lombok.RequiredArgsConstructor;
 
 @Configuration
 @EnableWebSecurity
@@ -50,8 +53,8 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/refresh").permitAll()
-                .requestMatchers("/api/products/**", "/api/categories/**").permitAll()
-                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/scalar", "/scalar/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/products/**", "/api/categories/**").permitAll()
+                .requestMatchers("/api/products/**", "/api/categories/**").hasRole("ADMIN")                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/scalar", "/scalar/**").permitAll()
                 .requestMatchers("/", "/storefront.html", "/favicon.ico").permitAll()
                 .anyRequest().authenticated()
             )
