@@ -3,11 +3,14 @@ package com.suresh.ecommerce.controller;
 import com.suresh.ecommerce.dto.PaymentVerificationDTO;
 import com.suresh.ecommerce.dto.RazorpayOrderResponseDTO;
 import com.suresh.ecommerce.entity.Payment;
+import com.suresh.ecommerce.security.CurrentUser;
+import com.suresh.ecommerce.service.OrderService;
 import com.suresh.ecommerce.service.PaymentService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -17,14 +20,18 @@ import org.springframework.web.bind.annotation.*;
 public class PaymentController {
 
     private final PaymentService paymentService;
+    private final OrderService orderService;
+    private final CurrentUser currentUser;
 
-    // Step 1: Called right after an order is placed, to start the payment process
+    // Step 1: only the order's owner (or ADMIN) can start payment
     @PostMapping("/create/{orderId}")
-    public ResponseEntity<RazorpayOrderResponseDTO> createPayment(@PathVariable Long orderId) {
+    public ResponseEntity<RazorpayOrderResponseDTO> createPayment(Authentication auth,
+                                                                  @PathVariable Long orderId) {
+        orderService.getOrderByIdForUser(orderId, auth.getName(), currentUser.isAdmin(auth));
         return ResponseEntity.ok(paymentService.createRazorpayOrder(orderId));
     }
 
-    // Step 2: Called after the client completes checkout in the Razorpay widget
+    // Step 2: protected by Razorpay signature verification inside the service
     @PostMapping("/verify")
     public ResponseEntity<Payment> verifyPayment(@Valid @RequestBody PaymentVerificationDTO dto) {
         Payment payment = paymentService.verifyAndCompletePayment(
@@ -36,7 +43,8 @@ public class PaymentController {
     }
 
     @GetMapping("/order/{orderId}")
-    public ResponseEntity<Payment> getPayment(@PathVariable Long orderId) {
+    public ResponseEntity<Payment> getPayment(Authentication auth, @PathVariable Long orderId) {
+        orderService.getOrderByIdForUser(orderId, auth.getName(), currentUser.isAdmin(auth));
         return ResponseEntity.ok(paymentService.getPaymentByOrderId(orderId));
     }
 }

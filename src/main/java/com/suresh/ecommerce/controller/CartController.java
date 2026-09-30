@@ -1,10 +1,12 @@
 package com.suresh.ecommerce.controller;
 
 import com.suresh.ecommerce.dto.CartDTO;
+import com.suresh.ecommerce.security.CurrentUser;
 import com.suresh.ecommerce.service.CartService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -14,25 +16,26 @@ import org.springframework.web.bind.annotation.*;
 public class CartController {
 
     private final CartService cartService;
+    private final CurrentUser currentUser;
 
-    @GetMapping("/{userId}")
-    public ResponseEntity<CartDTO> getCart(@PathVariable Long userId) {
-        return ResponseEntity.ok(cartService.getCartByUserId(userId));
+    @GetMapping("/my")
+    public ResponseEntity<CartDTO> getCart(Authentication auth) {
+        return ResponseEntity.ok(cartService.getCartByUserId(currentUser.id(auth)));
     }
 
-    @PostMapping("/{userId}/add")
+    @PostMapping("/add")
     public ResponseEntity<CartDTO> addItem(
-            @PathVariable Long userId,
+            Authentication auth,
             @RequestParam Long productId,
             @RequestParam Integer quantity) {
-        return ResponseEntity.ok(cartService.addItemToCart(userId, productId, quantity));
+        return ResponseEntity.ok(cartService.addItemToCart(currentUser.id(auth), productId, quantity));
     }
 
     @PutMapping("/item/{cartItemId}")
     public ResponseEntity<Void> updateQuantity(
             @PathVariable Long cartItemId,
             @RequestParam Integer quantity) {
-    	cartService.updateItemQuantity(cartItemId, quantity);
+        cartService.updateItemQuantity(cartItemId, quantity);
         return ResponseEntity.noContent().build();
     }
 
@@ -42,9 +45,9 @@ public class CartController {
         return ResponseEntity.noContent().build();
     }
 
-    @DeleteMapping("/{userId}/clear")
-    public ResponseEntity<Void> clearCart(@PathVariable Long userId) {
-        cartService.clearCart(userId);
+    @DeleteMapping("/clear")
+    public ResponseEntity<Void> clearCart(Authentication auth) {
+        cartService.clearCart(currentUser.id(auth));
         return ResponseEntity.noContent().build();
     }
 }
