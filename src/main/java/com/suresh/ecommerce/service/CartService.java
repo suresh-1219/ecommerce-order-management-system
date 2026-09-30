@@ -17,7 +17,8 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
-
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class CartService {
@@ -40,25 +41,28 @@ public class CartService {
     }
 
     public CartDTO addItemToCart(Long userId, Long productId, Integer quantity) {
+        if (quantity == null || quantity <= 0) {
+            throw new IllegalArgumentException("Quantity must be at least 1");
+        }
+
         Cart cart = getOrCreateCart(userId);
 
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + productId));
 
-        if (product.getStock() < quantity) {
-            throw new IllegalArgumentException("Insufficient stock for product: " + product.getName());
-        }
-
         CartItem existingItem = cartItemRepository
                 .findByCartIdAndProductId(cart.getId(), productId)
                 .orElse(null);
 
+        int alreadyInCart = existingItem != null ? existingItem.getQuantity() : 0;
+        if (product.getStock() < alreadyInCart + quantity) {
+            throw new IllegalArgumentException("Insufficient stock for product: " + product.getName());
+        }
+
         if (existingItem != null) {
-            // Product already in cart -> increase quantity
-            existingItem.setQuantity(existingItem.getQuantity() + quantity);
+            existingItem.setQuantity(alreadyInCart + quantity);
             cartItemRepository.save(existingItem);
         } else {
-            // New product -> add fresh cart item
             CartItem newItem = new CartItem();
             newItem.setCart(cart);
             newItem.setProduct(product);
@@ -89,9 +93,12 @@ public class CartService {
         return dto;
     }
 
-    public void updateItemQuantity(Long cartItemId, Integer quantity) {
-        CartItem item = cartItemRepository.findById(cartItemId)
-                .orElseThrow(() -> new ResourceNotFoundException("Cart item not found with id: " + cartItemId));
+    @Transactional
+    public void updateItemQuantity(Long userId, Long cartItemId, Integer quantity) {
+        if (quantity == null || quantity <= 0) {
+            throw new IllegalArgumentException("Quantity must be at least 1");
+        }
+        CartItem item = getOwnedItem(userId, cartItemId);
 
         if (item.getProduct().getStock() < quantity) {
             throw new IllegalArgumentException("Insufficient stock for product: " + item.getProduct().getName());
@@ -101,10 +108,9 @@ public class CartService {
         cartItemRepository.save(item);
     }
 
-    public void removeItemFromCart(Long cartItemId) {
-        CartItem item = cartItemRepository.findById(cartItemId)
-                .orElseThrow(() -> new ResourceNotFoundException("Cart item not found with id: " + cartItemId));
-        cartItemRepository.delete(item);
+    @Transactional
+    public void removeItemFromCart(Long userId, Long cartItemId) {
+        cartItemRepository.delete(getOwnedItem(userId, cartItemId));
     }
 
     public void clearCart(Long userId) {
@@ -122,5 +128,14 @@ public class CartService {
         dto.setQuantity(item.getQuantity());
         dto.setSubtotal(item.getProduct().getPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
         return dto;
+    }
+    
+    private CartItem getOwnedItem(Long userId, Long cartItemId) {
+        CartItem item = cartItemRepository.findById(cartItemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cart item not found with id: " + cartItemId));
+        if (!item.getCart().getUser().getId().equals(userId)) {
+            throw new AccessDeniedException("You can only modify your own cart items");
+        }
+        return item;
     }
 }

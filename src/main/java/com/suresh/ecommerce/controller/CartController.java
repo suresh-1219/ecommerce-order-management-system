@@ -33,15 +33,16 @@ public class CartController {
 
     @PutMapping("/item/{cartItemId}")
     public ResponseEntity<Void> updateQuantity(
+            Authentication auth,
             @PathVariable Long cartItemId,
             @RequestParam Integer quantity) {
-        cartService.updateItemQuantity(cartItemId, quantity);
+        cartService.updateItemQuantity(currentUser.id(auth), cartItemId, quantity);
         return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/item/{cartItemId}")
-    public ResponseEntity<Void> removeItem(@PathVariable Long cartItemId) {
-        cartService.removeItemFromCart(cartItemId);
+    public ResponseEntity<Void> removeItem(Authentication auth, @PathVariable Long cartItemId) {
+        cartService.removeItemFromCart(currentUser.id(auth), cartItemId);
         return ResponseEntity.noContent().build();
     }
 

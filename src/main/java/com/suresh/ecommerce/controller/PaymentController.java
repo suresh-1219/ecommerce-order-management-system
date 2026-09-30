@@ -1,5 +1,6 @@
 package com.suresh.ecommerce.controller;
 
+import com.suresh.ecommerce.dto.PaymentDTO;
 import com.suresh.ecommerce.dto.PaymentVerificationDTO;
 import com.suresh.ecommerce.dto.RazorpayOrderResponseDTO;
 import com.suresh.ecommerce.entity.Payment;
@@ -33,18 +34,15 @@ public class PaymentController {
 
     // Step 2: protected by Razorpay signature verification inside the service
     @PostMapping("/verify")
-    public ResponseEntity<Payment> verifyPayment(@Valid @RequestBody PaymentVerificationDTO dto) {
+    public ResponseEntity<PaymentDTO> verifyPayment(@Valid @RequestBody PaymentVerificationDTO dto) {
         Payment payment = paymentService.verifyAndCompletePayment(
-                dto.getRazorpayOrderId(),
-                dto.getRazorpayPaymentId(),
-                dto.getRazorpaySignature()
-        );
-        return ResponseEntity.ok(payment);
+                dto.getRazorpayOrderId(), dto.getRazorpayPaymentId(), dto.getRazorpaySignature());
+        return ResponseEntity.ok(PaymentDTO.from(payment));
     }
 
     @GetMapping("/order/{orderId}")
-    public ResponseEntity<Payment> getPayment(Authentication auth, @PathVariable Long orderId) {
+    public ResponseEntity<PaymentDTO> getPayment(Authentication auth, @PathVariable Long orderId) {
         orderService.getOrderByIdForUser(orderId, auth.getName(), currentUser.isAdmin(auth));
-        return ResponseEntity.ok(paymentService.getPaymentByOrderId(orderId));
+        return ResponseEntity.ok(PaymentDTO.from(paymentService.getPaymentByOrderId(orderId)));
     }
 }

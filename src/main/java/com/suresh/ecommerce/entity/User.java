@@ -2,7 +2,9 @@ package com.suresh.ecommerce.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.ToString;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 @Entity
 @Table(name = "users")
 @Data
@@ -19,6 +21,8 @@ public class User {
     private String email;
 
     @Column(nullable = false)
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    @ToString.Exclude
     private String password;
 
     @Enumerated(EnumType.STRING)
