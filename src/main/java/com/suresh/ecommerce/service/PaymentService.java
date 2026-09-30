@@ -15,7 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-
+import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class PaymentService {
@@ -35,6 +35,16 @@ public class PaymentService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
 
+        Payment payment = paymentRepository.findByOrderId(orderId).orElse(null);
+        if (payment != null && payment.getStatus() == Payment.Status.SUCCESS) {
+            throw new IllegalArgumentException("Order is already paid");
+        }
+        if (payment != null && payment.getStatus() == Payment.Status.PENDING) {
+            // Reuse the existing Razorpay order instead of creating a duplicate
+            return new RazorpayOrderResponseDTO(payment.getRazorpayOrderId(), razorpayKeyId,
+                    order.getTotalAmount().doubleValue(), "INR");
+        }
+        
         try {
             JSONObject orderRequest = new JSONObject();
             // Razorpay expects amount in the smallest currency unit (paise for INR)
@@ -47,7 +57,9 @@ public class PaymentService {
             String razorpayOrderId = razorpayOrder.get("id");
 
             // Save a PENDING payment record locally, linked to this Razorpay order
-            Payment payment = new Payment();
+            if (payment == null) {
+                payment = new Payment();
+            }
             payment.setOrder(order);
             payment.setRazorpayOrderId(razorpayOrderId);
             payment.setAmount(order.getTotalAmount());
@@ -63,10 +75,15 @@ public class PaymentService {
     }
 
     // Step 2: Verify the payment signature after checkout completes on the client side
+    @Transactional
     public Payment verifyAndCompletePayment(String razorpayOrderId, String razorpayPaymentId, String razorpaySignature) {
         Payment payment = paymentRepository.findByRazorpayOrderId(razorpayOrderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment not found for order: " + razorpayOrderId));
 
+        if (payment.getStatus() == Payment.Status.SUCCESS) {
+            return payment; // already verified, don't touch it
+        }
+        
         try {
             JSONObject options = new JSONObject();
             options.put("razorpay_order_id", razorpayOrderId);
@@ -85,7 +102,7 @@ public class PaymentService {
                 order.setStatus(Order.Status.CONFIRMED);
                 orderRepository.save(order);
             } else {
-                payment.setStatus(Payment.Status.FAILED);
+                throw new IllegalArgumentException("Invalid payment signature");
             }
 
             return paymentRepository.save(payment);
