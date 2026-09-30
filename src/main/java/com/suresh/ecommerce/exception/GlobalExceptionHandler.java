@@ -14,7 +14,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
-
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.access.AccessDeniedException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -50,6 +51,17 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
     }
 
+    // Thrown when a unique constraint is violated (e.g., duplicate category name or email)
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrity(DataIntegrityViolationException ex) {
+        log.warn("Data integrity violation: {}", ex.getMostSpecificCause().getMessage());
+        ErrorResponse error = new ErrorResponse(
+                LocalDateTime.now(), HttpStatus.CONFLICT.value(),
+                "Conflict", "A record with the same unique value already exists", null
+        );
+        return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+    
     // Thrown when a refresh token is missing, unknown, or expired
     @ExceptionHandler(TokenRefreshException.class)
     public ResponseEntity<ErrorResponse> handleTokenRefresh(TokenRefreshException ex) {
@@ -83,5 +95,13 @@ public class GlobalExceptionHandler {
                 "Internal Server Error", "Something went wrong. Please try again later.", null
         );
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
+        ErrorResponse error = new ErrorResponse(
+                LocalDateTime.now(), HttpStatus.FORBIDDEN.value(),
+                "Forbidden", "You do not have permission to perform this action", null
+        );
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
 }
