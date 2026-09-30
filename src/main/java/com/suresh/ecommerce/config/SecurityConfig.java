@@ -56,6 +56,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/products/**", "/api/categories/**").permitAll()
                 .requestMatchers("/api/products/**", "/api/categories/**").hasRole("ADMIN")                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/scalar", "/scalar/**").permitAll()
                 .requestMatchers("/", "/storefront.html", "/favicon.ico").permitAll()
+                .requestMatchers(HttpMethod.PUT, "/api/orders/*/status").hasRole("ADMIN")
+                .requestMatchers("/api/orders/user/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider())

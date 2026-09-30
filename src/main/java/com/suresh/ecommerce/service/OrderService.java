@@ -15,7 +15,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
-
+import org.springframework.security.access.AccessDeniedException;
 @Service
 @RequiredArgsConstructor
 public class OrderService {
@@ -116,6 +116,21 @@ public class OrderService {
                 .collect(Collectors.toList());
     }
 
+    public Long getUserIdByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email))
+                .getId();
+    }
+
+    public OrderDTO getOrderByIdForUser(Long orderId, String email, boolean isAdmin) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
+        if (!isAdmin && !order.getUser().getEmail().equals(email)) {
+            throw new AccessDeniedException("You can only view your own orders");
+        }
+        return mapToDTO(order, orderItemRepository.findByOrderId(orderId));
+    }
+    
     public OrderDTO getOrderById(Long orderId) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
