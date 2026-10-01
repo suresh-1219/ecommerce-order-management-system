@@ -92,18 +92,14 @@ public class OrderService {
         // Step 4: Clear the cart after successful order placement
         cartItemRepository.deleteAll(cartItems);
 
-     // Send confirmation email (order placement should not fail if email fails)
-        try {
-            emailService.sendOrderConfirmation(
-                    user.getEmail(),
-                    savedOrder.getId(),
-                    user.getName(),
-                    totalAmount.toString()
-            );
-        } catch (Exception e) {
-            // Log and continue — a failed email should never roll back a successful order
-            System.err.println("Failed to send order confirmation email: " + e.getMessage());
-        }
+        // Email is sent asynchronously; failures are logged inside EmailService
+        // and never affect order placement.
+        emailService.sendOrderConfirmation(
+                user.getEmail(),
+                savedOrder.getId(),
+                user.getName(),
+                totalAmount.toString()
+        );
 
         return mapToDTO(savedOrder, orderItems);
      
