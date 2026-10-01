@@ -8,6 +8,24 @@ email notifications) commonly required in production and client work.
 
 ---
 
+## 🚀 Live Demo
+
+**API docs (Swagger UI):** https://ecommerce-order-management-system-v6mm.onrender.com/swagger-ui/index.html
+
+> **Cold start:** Hosted on Render's free tier, so the instance sleeps after inactivity. The first request can take 1-2 minutes while the container wakes up and the app starts (~80s). Later requests are fast.
+
+**Hosting:** Render (Docker) · Aiven MySQL · Render Key Value (Redis)
+
+**Try it:**
+1. `POST /api/auth/register` → `POST /api/auth/login`, copy the access token
+2. Click **Authorize** in Swagger and paste the token
+3. Browse products, add to cart, place an order, create a Razorpay test payment
+
+**Roles:** `CUSTOMER` can manage only their own cart, orders and payments. `ADMIN` can create/update/delete products and categories. Demo admin credentials are available on request.
+
+### Known limitation
+Order confirmation emails (JavaMail/Gmail SMTP) work locally and in Docker, but Render's free tier blocks outbound SMTP, so emails are not delivered on the live demo. Emails are sent asynchronously, so order placement is unaffected.
+
 ## Features
 
 - **JWT-based authentication** with role-based access (`CUSTOMER` / `ADMIN`), plus a
